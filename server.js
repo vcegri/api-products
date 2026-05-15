@@ -61,7 +61,6 @@ app.post("/products", async (req, res) => {
   try {
     const {
       idProduct,
-      username,
       date,
       numProducts,
       description,
@@ -75,9 +74,9 @@ app.post("/products", async (req, res) => {
 
     await db.execute(
       `INSERT INTO Product 
-      (idProduct, username, date, numProducts, description, category, state, minStock, location)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [idProduct, username, date, numProducts, description, category, state, minStock, location]
+      (idProduct, date, numProducts, description, category, state, minStock, location)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [idProduct, date, numProducts, description, category, state, minStock, location]
     );
 
     await db.end();
@@ -92,7 +91,6 @@ app.post("/products", async (req, res) => {
 app.put("/products/:id", async (req, res) => {
   try {
     const {
-      username,
       date,
       numProducts,
       description,
@@ -106,10 +104,10 @@ app.put("/products/:id", async (req, res) => {
 
     const [result] = await db.execute(
       `UPDATE Product 
-       SET username = ?, date = ?, numProducts = ?, description = ?, 
+       SET date = ?, numProducts = ?, description = ?, 
            category = ?, state = ?, minStock = ?, location = ?
        WHERE idProduct = ?`,
-      [username, date, numProducts, description, category, state, minStock, location, req.params.id]
+      [date, numProducts, description, category, state, minStock, location, req.params.id]
     );
 
     await db.end();
