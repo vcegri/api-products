@@ -28,7 +28,11 @@ app.get("/products", async (req, res) => {
     await db.end();
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: "Error al obtener productos" });
+    console.error(error);
+    res.status(500).json({ 
+      error: "Error al obtener productos",
+      detail: error.message
+    });
   }
 });
 
