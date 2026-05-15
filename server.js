@@ -123,9 +123,9 @@ app.get("/products/qr/all", async (req, res) => {
 
       html += `
         <div class="card">
-          <h2>Producto ${product.idProduct}</h2>
-          <p><strong>${product.description}</strong></p>
-          <img src="${qrImage}" alt="QR producto ${product.idProduct}">
+          <h2>${product.name}</h2>
+          <p>${product.description}</p>
+          <img src="${qrImage}" alt="QR ${product.name}">
         </div>
       `;
     }
@@ -201,8 +201,8 @@ app.get("/products/:id/qr", async (req, res) => {
         </style>
       </head>
       <body>
-        <h1>QR Producto ${product.idProduct}</h1>
-        <h2>${product.description}</h2>
+        <h1>${product.name}</h1>
+        <p>${product.description}</p>
         <img src="${qrImage}" alt="QR producto ${product.idProduct}">
         <button onclick="window.print()">Imprimir QR</button>
       </body>
