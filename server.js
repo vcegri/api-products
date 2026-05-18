@@ -18,23 +18,11 @@ async function getConnection() {
 }
 
 app.get("/", (req, res) => {
-  res.json({
-    message: "API funcionando",
-    endpoints: [
-      "GET /products",
-      "GET /products/:id",
-      "POST /products",
-      "PUT /products/:id",
-      "DELETE /products/:id",
-      "GET /products/:id/qr",
-      "GET /products/qr/all",
-      "GET /users",
-      "GET /stats"
-    ]
-  });
+  res.json({ message: "API funcionando" });
 });
 
-// GET todos los productos
+/* ===================== PRODUCTS ===================== */
+
 app.get("/products", async (req, res) => {
   try {
     const db = await getConnection();
@@ -42,7 +30,6 @@ app.get("/products", async (req, res) => {
     await db.end();
     res.json(rows);
   } catch (error) {
-    console.error("ERROR GET /products:", error);
     res.status(500).json({
       error: "Error al obtener productos",
       detail: error.message
@@ -50,8 +37,131 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// PÁGINA HTML con QR de todos los productos
-// IMPORTANTE: va antes de /products/:id
+app.get("/products/:id", async (req, res) => {
+  try {
+    const db = await getConnection();
+
+    const [rows] = await db.execute(
+      "SELECT * FROM Product WHERE idProduct = ?",
+      [req.params.id]
+    );
+
+    await db.end();
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({
+      error: "Error al obtener producto",
+      detail: error.message
+    });
+  }
+});
+
+app.post("/products", async (req, res) => {
+  try {
+    const {
+      idProduct,
+      name,
+      date,
+      numProducts,
+      description,
+      category,
+      state,
+      minStock,
+      location
+    } = req.body;
+
+    const db = await getConnection();
+
+    await db.execute(
+      `INSERT INTO Product
+      (idProduct, name, date, numProducts, description, category, state, minStock, location)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [idProduct, name, date, numProducts, description, category, state, minStock, location]
+    );
+
+    await db.end();
+
+    res.json({ message: "Producto creado" });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Error al crear producto",
+      detail: error.message
+    });
+  }
+});
+
+app.put("/products/:id", async (req, res) => {
+  try {
+    const {
+      name,
+      date,
+      numProducts,
+      description,
+      category,
+      state,
+      minStock,
+      location
+    } = req.body;
+
+    const db = await getConnection();
+
+    const [result] = await db.execute(
+      `UPDATE Product
+       SET name = ?, date = ?, numProducts = ?, description = ?,
+           category = ?, state = ?, minStock = ?, location = ?
+       WHERE idProduct = ?`,
+      [name, date, numProducts, description, category, state, minStock, location, req.params.id]
+    );
+
+    await db.end();
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    res.json({ message: "Producto actualizado" });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Error al actualizar producto",
+      detail: error.message
+    });
+  }
+});
+
+app.delete("/products/:id", async (req, res) => {
+  try {
+    const db = await getConnection();
+
+    const [result] = await db.execute(
+      "DELETE FROM Product WHERE idProduct = ?",
+      [req.params.id]
+    );
+
+    await db.end();
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    res.json({ message: "Producto eliminado" });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Error al eliminar producto",
+      detail: error.message
+    });
+  }
+});
+
+/* ===================== QR ===================== */
+
 app.get("/products/qr/all", async (req, res) => {
   try {
     const db = await getConnection();
@@ -59,59 +169,22 @@ app.get("/products/qr/all", async (req, res) => {
     await db.end();
 
     let html = `
-      <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <title>QR Productos</title>
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background: #f5f5f5;
-          }
-          h1 {
-            text-align: center;
-          }
-          .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 20px;
-          }
-          .card {
-            background: white;
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-          }
-          img {
-            width: 220px;
-            height: 220px;
-          }
-          pre {
-            text-align: left;
-            white-space: pre-wrap;
-            word-break: break-word;
-            background: #eee;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 12px;
-          }
-          .print {
-            margin-bottom: 20px;
-            text-align: center;
-          }
-          button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-          }
+          body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+          h1 { text-align: center; }
+          .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+          .card { background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+          img { width: 220px; height: 220px; }
+          button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
         </style>
       </head>
       <body>
         <h1>QR de productos</h1>
-        <div class="print">
+        <div style="text-align:center; margin-bottom:20px;">
           <button onclick="window.print()">Imprimir QRs</button>
         </div>
         <div class="grid">
@@ -139,7 +212,6 @@ app.get("/products/qr/all", async (req, res) => {
     res.send(html);
 
   } catch (error) {
-    console.error("ERROR GET /products/qr/all:", error);
     res.status(500).json({
       error: "Error generando QRs",
       detail: error.message
@@ -147,7 +219,6 @@ app.get("/products/qr/all", async (req, res) => {
   }
 });
 
-// QR de un producto concreto en HTML
 app.get("/products/:id/qr", async (req, res) => {
   try {
     const db = await getConnection();
@@ -168,49 +239,27 @@ app.get("/products/:id/qr", async (req, res) => {
     const qrImage = await QRCode.toDataURL(qrText);
 
     res.send(`
-      <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>QR Producto ${product.idProduct}</title>
+        <title>QR ${product.name}</title>
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 30px;
-          }
-          img {
-            width: 300px;
-            height: 300px;
-          }
-          pre {
-            text-align: left;
-            max-width: 600px;
-            margin: 20px auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            background: #eee;
-            padding: 12px;
-            border-radius: 8px;
-          }
-          button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-          }
+          body { font-family: Arial; text-align: center; padding: 30px; }
+          img { width: 300px; height: 300px; }
+          button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
         </style>
       </head>
       <body>
         <h1>${product.name}</h1>
         <p>${product.description}</p>
-        <img src="${qrImage}" alt="QR producto ${product.idProduct}">
+        <img src="${qrImage}" alt="QR ${product.name}">
+        <br><br>
         <button onclick="window.print()">Imprimir QR</button>
       </body>
       </html>
     `);
 
   } catch (error) {
-    console.error("ERROR GET /products/:id/qr:", error);
     res.status(500).json({
       error: "Error generando QR",
       detail: error.message
@@ -218,188 +267,47 @@ app.get("/products/:id/qr", async (req, res) => {
   }
 });
 
-// QR de un producto concreto como imagen PNG
-app.get("/products/:id/qr.png", async (req, res) => {
+/* ===================== MOVEMENTS ===================== */
+
+app.get("/movements", async (req, res) => {
   try {
     const db = await getConnection();
-
-    const [rows] = await db.execute(
-      "SELECT * FROM Product WHERE idProduct = ?",
-      [req.params.id]
-    );
-
+    const [rows] = await db.execute("SELECT * FROM Movements");
     await db.end();
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Producto no encontrado" });
-    }
-
-    const product = rows[0];
-    const qrText = JSON.stringify(product);
-
-    res.setHeader("Content-Type", "image/png");
-    QRCode.toFileStream(res, qrText, {
-      type: "png",
-      width: 400,
-      margin: 2
-    });
-
+    res.json(rows);
   } catch (error) {
-    console.error("ERROR GET /products/:id/qr.png:", error);
     res.status(500).json({
-      error: "Error generando imagen QR",
+      error: "Error al obtener movimientos",
       detail: error.message
     });
   }
 });
 
-// GET un producto por ID
-app.get("/products/:id", async (req, res) => {
+app.post("/movements", async (req, res) => {
   try {
-    const db = await getConnection();
-
-    const [rows] = await db.execute(
-      "SELECT * FROM Product WHERE idProduct = ?",
-      [req.params.id]
-    );
-
-    await db.end();
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Producto no encontrado" });
-    }
-
-    res.json(rows[0]);
-
-  } catch (error) {
-    console.error("ERROR GET /products/:id:", error);
-    res.status(500).json({
-      error: "Error al obtener producto",
-      detail: error.message
-    });
-  }
-});
-
-// INSERT producto
-app.post("/products", async (req, res) => {
-  try {
-    const {
-      idProduct,
-      date,
-      numProducts,
-      description,
-      category,
-      state,
-      minStock,
-      location
-    } = req.body;
+    const { Move } = req.body;
 
     const db = await getConnection();
 
     await db.execute(
-      `INSERT INTO Product 
-      (idProduct, date, numProducts, description, category, state, minStock, location)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [idProduct, date, numProducts, description, category, state, minStock, location]
+      "INSERT INTO Movements (Move) VALUES (?)",
+      [Move]
     );
 
     await db.end();
 
-    res.json({
-      message: "Producto creado",
-      product: {
-        idProduct,
-        date,
-        numProducts,
-        description,
-        category,
-        state,
-        minStock,
-        location
-      },
-      qrUrl: `/products/${idProduct}/qr`
-    });
+    res.json({ message: "Movimiento creado" });
 
   } catch (error) {
-    console.error("ERROR POST /products:", error);
     res.status(500).json({
-      error: "Error al crear producto",
+      error: "Error al crear movimiento",
       detail: error.message
     });
   }
 });
 
-// UPDATE producto completo
-app.put("/products/:id", async (req, res) => {
-  try {
-    const {
-      date,
-      numProducts,
-      description,
-      category,
-      state,
-      minStock,
-      location
-    } = req.body;
+/* ===================== USERS ===================== */
 
-    const db = await getConnection();
-
-    const [result] = await db.execute(
-      `UPDATE Product 
-       SET date = ?, numProducts = ?, description = ?, 
-           category = ?, state = ?, minStock = ?, location = ?
-       WHERE idProduct = ?`,
-      [date, numProducts, description, category, state, minStock, location, req.params.id]
-    );
-
-    await db.end();
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Producto no encontrado" });
-    }
-
-    res.json({
-      message: "Producto actualizado",
-      qrUrl: `/products/${req.params.id}/qr`
-    });
-
-  } catch (error) {
-    console.error("ERROR PUT /products/:id:", error);
-    res.status(500).json({
-      error: "Error al actualizar producto",
-      detail: error.message
-    });
-  }
-});
-
-// DELETE producto
-app.delete("/products/:id", async (req, res) => {
-  try {
-    const db = await getConnection();
-
-    const [result] = await db.execute(
-      "DELETE FROM Product WHERE idProduct = ?",
-      [req.params.id]
-    );
-
-    await db.end();
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Producto no encontrado" });
-    }
-
-    res.json({ message: "Producto eliminado" });
-
-  } catch (error) {
-    console.error("ERROR DELETE /products/:id:", error);
-    res.status(500).json({
-      error: "Error al eliminar producto",
-      detail: error.message
-    });
-  }
-});
-
-// USERS
 app.get("/users", async (req, res) => {
   try {
     const db = await getConnection();
@@ -407,7 +315,6 @@ app.get("/users", async (req, res) => {
     await db.end();
     res.json(rows);
   } catch (error) {
-    console.error("ERROR GET /users:", error);
     res.status(500).json({
       error: "Error al obtener usuarios",
       detail: error.message
@@ -415,7 +322,8 @@ app.get("/users", async (req, res) => {
   }
 });
 
-// STATS
+/* ===================== STATS ===================== */
+
 app.get("/stats", async (req, res) => {
   try {
     const db = await getConnection();
@@ -428,10 +336,10 @@ app.get("/stats", async (req, res) => {
     `);
 
     await db.end();
+
     res.json(rows[0]);
 
   } catch (error) {
-    console.error("ERROR GET /stats:", error);
     res.status(500).json({
       error: "Error al obtener estadísticas",
       detail: error.message
