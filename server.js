@@ -322,27 +322,31 @@ app.get("/users", async (req, res) => {
   }
 });
 
-/*DELETE MOVEMENTS*/ 
+/*DELETE MOVEMENTS*/
 
-app.delete('/movements', async (req, res) => {
+app.delete("/movements", async (req, res) => {
   try {
-    const lastMovement = await Movement.findOne().sort({ createdAt: -1 });
+    const db = await getConnection();
 
-    if (!lastMovement) {
-      return res.status(200).json({ message: 'No hay órdenes para borrar' });
+    const [result] = await db.execute(
+      "DELETE FROM Movements LIMIT 1"
+    );
+
+    await db.end();
+
+    if (result.affectedRows === 0) {
+      return res.json({ message: "No hay movimientos para borrar" });
     }
 
-    await Movement.deleteOne({ _id: lastMovement._id });
+    res.json({ message: "Movimiento borrado" });
 
-    return res.status(200).json({ message: 'Última orden borrada' });
   } catch (error) {
-    return res.status(500).json({
-      error: 'Error borrando la última orden',
-      details: error.message
+    res.status(500).json({
+      error: "Error al borrar movimiento",
+      detail: error.message
     });
   }
 });
-
 
 /* ===================== STATS ===================== */
 
